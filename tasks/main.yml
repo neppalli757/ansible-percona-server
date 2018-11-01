@@ -1,0 +1,141 @@
+---
+#- name: Ensure root password is set
+#  fail: msg="You must set root password (percona_server_root_password)"
+#  when: percona_server_root_password is not defined
+
+- name: Add Percona apt signing key
+  sudo: yes
+  apt_key: keyserver=keyserver.ubuntu.com id=8507EFA5 state=present
+
+- name: Add Percona repository
+  sudo: yes
+  apt_repository: repo='deb http://repo.percona.com/apt trusty main' state=present
+
+- name: Add Percona source repository
+  sudo: yes
+  apt_repository: repo='deb-src http://repo.percona.com/apt trusty main' state=present
+
+# debconf-get-selections | grep percona
+#- name: Sets root password
+#  sudo: yes
+#  debconf:
+#    name: "percona-server-server-{{ percona_server_version }}"
+#    question: "{{ item }}"
+#    value: "{{ percona_server_root_password }}"
+#    vtype: 'password'
+#  changed_when: false
+#  with_items:
+#    - 'percona-server-server/root_password'
+#    - 'percona-server-server/root_password_again'
+
+- name: Install python packages
+  apt: pkg={{ item }} state=present
+  sudo: yes
+  with_items:
+    - python-mysqldb
+
+- name: Install Percona packages
+  sudo: yes
+  apt: pkg={{ item }} state=present update_cache=yes
+  with_items:
+    - percona-server-common-5.6
+    - percona-server-client-5.6
+    - percona-server-server-5.6
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  notify: Restart percona
+
+#need to set mysql root pass
+- meta: flush_handlers
+
+- name: mysqld is running
+  service: name=mysql state=started enabled=yes
+
+#- name: Configures for easy access as root user
+#  sudo: yes
+#  template:
+#    src: "../templates/root_my.cnf.j2"
+#    dest: ~/.my.cnf
+#    mode: 0644
+#    notify:
+#      - restart mysql
+
+- name: update mysql root password for all root accounts
+  sudo: yes 
+  mysql_user: 
+    name: root
+    host: localhost 
+    password: "{{ percona_server_root_password }}"
+
+- name: Update mysql root password for all root accounts "{{ percona_server_root_password }}"
+  sudo: yes 
+  mysql_user:
+     name: root
+     password: "{{ percona_server_root_password }}"
+     priv: "*.*:ALL,GRANT"
+
+- name: Configures for easy access as root user
+  sudo: yes
+  template:
+    src: "../templates/root_my.cnf.j2"
+    dest: ~/.my.cnf
+    mode: 0644
+    notify:
+      - restart mysql
+ 
+- name: Secures the MySQL root user for IPV6 localhost (::1)
+  sudo: yes
+  mysql_user:
+    name: "root"
+    password: "{{ percona_server_root_password }}"
+    host: "::1"
+
+- name: Secures the MySQL root user for IPV4 localhost (127.0.0.1)
+  mysql_user:
+    name: "root"
+    password: "{{ percona_server_root_password }}"
+    host: "127.0.0.1"
+
+- name: Secures the MySQL root user for localhost domain (localhost)
+  mysql_user:
+    name: "root"
+    password: "{{ percona_server_root_password }}"
+    host: "localhost"
+
+- name: ensure databases exists
+  mysql_db:
+    name: "{{ item.name }}"
+    encoding: "{{ item.encoding | default('utf8') }}"
+    login_user: root
+    login_password: "{{ percona_server_root_password }}"
+    state: "{{ item.state | default('present') }}"
+  with_items: "{{ percona_server_databases }}"
+  when: item.name is defined and item.name != ""
+
+- name: ensure database users exists
+  mysql_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password | default(item.name) }}"
+    host: "{{ item.host | default('localhost') }}"
+    priv: "{{ item.priv }}"
+    login_user: root
+    login_password: "{{ percona_server_root_password }}"
+    state: "{{ item.state | default('present') }}"
+  with_items: "{{ percona_server_users }}"
+  when: item.name is defined and item.name != ""
+
+# support old distros that does not create my.cnf on install
+- name: create /etc/mysql/my.cnf if does not exists
+  command: touch /etc/mysql/my.cnf creates=/etc/mysql/my.cnf
+
+- name: configure mysqld
+  ini_file:
+    dest: /etc/mysql/my.cnf
+    section: mysqld
+    option: "{{ item.key }}"
+    value: "{{ item.value }}"
+    mode: 0644
+    backup: yes
+  with_dict: "{{ percona_server_config }}"
+  notify:
+    - restart mysql
