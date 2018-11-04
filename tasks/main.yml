@@ -1,8 +1,4 @@
 ---
-#- name: Ensure root password is set
-#  fail: msg="You must set root password (percona_server_root_password)"
-#  when: percona_server_root_password is not defined
-
 - name: Add Percona apt signing key
   sudo: yes
   apt_key: keyserver=keyserver.ubuntu.com id=8507EFA5 state=present
@@ -50,28 +46,6 @@
 - name: mysqld is running
   service: name=mysql state=started enabled=yes
 
-#- name: Configures for easy access as root user
-#  sudo: yes
-#  template:
-#    src: "../templates/root_my.cnf.j2"
-#    dest: ~/.my.cnf
-#    mode: 0644
-#    notify:
-#      - restart mysql
-
-#- name: update mysql root password for all root accounts
-#  sudo: yes 
-#  mysql_user: 
-#    name: root
-#    host: localhost 
-#    password: "{{ percona_server_root_password }}"
-
-#- name: Update mysql root password for all root accounts "{{ percona_server_root_password }}"
-#  sudo: yes 
-#  mysql_user:
-#     name: root
-#     password: "{{ percona_server_root_password }}"
-#     priv: "*.*:ALL,GRANT"
 
 - name: Configures for easy access as root user
   sudo: yes
@@ -79,8 +53,6 @@
     src: "../templates/root_my.cnf.j2"
     dest: ~/.my.cnf
     mode: 0644
-#    notify:
-#      - restart mysql
  
 - name: Secures the MySQL root user for IPV6 localhost (::1)
   sudo: yes
