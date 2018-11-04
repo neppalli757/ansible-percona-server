@@ -1,0 +1,13 @@
+- hosts: percona
+  vars:
+    percona_server_root_password: mypassword
+    percona_server_version: 5.6
+    percona_server_databases:
+      - { name: database1 }
+    percona_server_users:
+      - { name: user1, password: sapun, priv: "database1.*:ALL" }
+    percona_server_config:
+      bind-address: "0.0.0.0"
+      performance_schema: "off"
+  roles:
+     - ansible-percona-server

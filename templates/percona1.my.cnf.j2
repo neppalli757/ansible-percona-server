@@ -1,0 +1,89 @@
+[mysql]
+port = 13306
+[mysqld]
+datadir=/var/lib/mysql
+socket=/var/lib/mysql/mysql.sock
+pid-file = /var/lib/mysql/mysql.pid
+user=mysql
+group_concat_max_len = 65535
+# SAFETY percona1#
+# allow a reasonable number of connection errors
+max-connect-errors             = 1000000
+# Do not perform name resolution
+# All permissions must by via IP address
+skip-name-resolve
+sql-mode                       = STRICT_TRANS_TABLES,NO_AUTO_CREATE_USER,NO_AUTO_VALUE_ON_ZERO,NO_ENGINE_SUBSTITUTION
+sysdate-is-now                 = 1
+innodb                         = FORCE
+innodb-strict-mode             = 1
+wait_timeout               = 3600
+# Disabling symbolic-links is recommended to prevent assorted security risks
+symbolic-links=0
+# listen on non-standard port, tungsten will use standard port
+port = 13306
+# CACHES AND LIMITS #
+tmp-table-size                 = 32M
+max-heap-table-size            = 32M
+query-cache-type               = 0
+query-cache-size               = 0
+max-connections                = 1500
+thread-cache-size              = 100
+open-files-limit               = 65535
+table-definition-cache         = 1024
+table-open-cache               = 2048
+# LOGGING #
+log-error                      = /var/lib/mysql/mysql-error.log
+log-queries-not-using-indexes  = 0
+slow-query-log                 = 0
+slow-query-log-file            = /var/lib/mysql/mysql-slow.log
+# PERCONA MONITORING AND MANAGEMENT #
+log_output=file
+slow_query_log=OFF
+long_query_time=10
+log_slow_rate_limit=100
+log_slow_rate_type=query
+log_slow_verbosity=full
+log_slow_admin_statements=ON
+log_slow_slave_statements=ON
+slow_query_log_always_write_time=1
+slow_query_log_use_global_control=all
+innodb_monitor_enable=all
+userstat=1
+# dedicated server, use a good chunk of memory
+innodb_buffer_pool_size = 10GB
+# 2 log files gives us 1G space
+innodb_log_file_size = 512M
+# Use file per table model explicitly
+innodb_file_per_table = ON
+# The maximum size of a query packet the server can handle as well as
+# maximum query size server can process (Important when working with
+# large BLOBs).  enlarged dynamically, for each connection.
+max_allowed_packet = 52M
+# If set to 1, InnoDB will flush (fsync) the transaction logs to the
+# disk at each commit, which offers full ACID behavior. If you are
+# willing to compromise this safety, and you are running small
+# transactions, you may set this to 0 or 2 to reduce disk I/O to the
+# logs. Value 0 means that the log is only written to the log file and
+# the log file flushed to disk approximately once per second. Value 2
+# means the log is written to the log file at each commit, but the log
+# file is only flushed to disk approximately once per second.
+innodb_flush_log_at_trx_commit = 2
+# The flush method InnoDB will use for Log. The tablespace always uses
+# doublewrite flush logic. The default value is "fdatasync", another
+# option is "O_DSYNC".
+innodb_flush_method = O_DIRECT
+# Table type which is used by default when creating new tables, if not
+# specified differently during the CREATE TABLE statement.
+default-storage-engine = INNODB
+# Binary logging options
+# Enable binary logging. This is required for acting as a MASTER in a
+# replication configuration. You also need the binary log if you need
+# the ability to do point in time recovery from your latest backup.
+log-bin=/var/lib/mysql/mysql-bin
+# Set the frequency of flushing the binary log to disk
+sync_binlog = 1
+# binary logging format - mixed recommended
+binlog_format=row
+# only keep binary logs for a reasonable period
+expire_logs_days = 7
+

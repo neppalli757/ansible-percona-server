@@ -16,17 +16,17 @@
   apt_repository: repo='deb-src http://repo.percona.com/apt trusty main' state=present
 
 # debconf-get-selections | grep percona
-#- name: Sets root password
-#  sudo: yes
-#  debconf:
-#    name: "percona-server-server-{{ percona_server_version }}"
-#    question: "{{ item }}"
-#    value: "{{ percona_server_root_password }}"
-#    vtype: 'password'
-#  changed_when: false
-#  with_items:
-#    - 'percona-server-server/root_password'
-#    - 'percona-server-server/root_password_again'
+- name: Sets root password
+  sudo: yes
+  debconf:
+    name: "percona-server-server-{{ percona_server_version }}"
+    question: "{{ item }}"
+    value: "{{ percona_server_root_password }}"
+    vtype: 'password'
+  changed_when: false
+  with_items:
+    - 'percona-server-server/root_password'
+    - 'percona-server-server/root_password_again'
 
 - name: Install python packages
   apt: pkg={{ item }} state=present
@@ -43,7 +43,6 @@
     - percona-server-server-5.6
   environment:
     DEBIAN_FRONTEND: noninteractive
-  notify: Restart percona
 
 #need to set mysql root pass
 - meta: flush_handlers
@@ -60,19 +59,19 @@
 #    notify:
 #      - restart mysql
 
-- name: update mysql root password for all root accounts
-  sudo: yes 
-  mysql_user: 
-    name: root
-    host: localhost 
-    password: "{{ percona_server_root_password }}"
+#- name: update mysql root password for all root accounts
+#  sudo: yes 
+#  mysql_user: 
+#    name: root
+#    host: localhost 
+#    password: "{{ percona_server_root_password }}"
 
-- name: Update mysql root password for all root accounts "{{ percona_server_root_password }}"
-  sudo: yes 
-  mysql_user:
-     name: root
-     password: "{{ percona_server_root_password }}"
-     priv: "*.*:ALL,GRANT"
+#- name: Update mysql root password for all root accounts "{{ percona_server_root_password }}"
+#  sudo: yes 
+#  mysql_user:
+#     name: root
+#     password: "{{ percona_server_root_password }}"
+#     priv: "*.*:ALL,GRANT"
 
 - name: Configures for easy access as root user
   sudo: yes
@@ -80,8 +79,8 @@
     src: "../templates/root_my.cnf.j2"
     dest: ~/.my.cnf
     mode: 0644
-    notify:
-      - restart mysql
+#    notify:
+#      - restart mysql
  
 - name: Secures the MySQL root user for IPV6 localhost (::1)
   sudo: yes
@@ -91,18 +90,21 @@
     host: "::1"
 
 - name: Secures the MySQL root user for IPV4 localhost (127.0.0.1)
+  sudo: yes
   mysql_user:
     name: "root"
     password: "{{ percona_server_root_password }}"
     host: "127.0.0.1"
 
 - name: Secures the MySQL root user for localhost domain (localhost)
+  sudo: yes
   mysql_user:
     name: "root"
     password: "{{ percona_server_root_password }}"
     host: "localhost"
 
 - name: ensure databases exists
+  sudo: yes
   mysql_db:
     name: "{{ item.name }}"
     encoding: "{{ item.encoding | default('utf8') }}"
@@ -113,6 +115,7 @@
   when: item.name is defined and item.name != ""
 
 - name: ensure database users exists
+  sudo: yes
   mysql_user:
     name: "{{ item.name }}"
     password: "{{ item.password | default(item.name) }}"
@@ -126,9 +129,35 @@
 
 # support old distros that does not create my.cnf on install
 - name: create /etc/mysql/my.cnf if does not exists
+  sudo: yes
   command: touch /etc/mysql/my.cnf creates=/etc/mysql/my.cnf
 
+# copy my.cnf to percona1
+- name: copy my.cnf to percona-node1
+  sudo: yes
+  copy:
+    src: "../templates/percona1.my.cnf.j2"
+    dest: "/etc/mysql/my.cnf"
+  when: inventory_hostname == "percona-node1"
+
+# copy my.cnf to percona2
+- name: copy my.cnf to percona-node2
+  sudo: yes
+  copy:
+    src: "../templates/percona2.my.cnf.j2"
+    dest: "/etc/mysql/my.cnf"
+  when: inventory_hostname == "percona-node2"
+
+# copy my.cnf to percona3
+- name: copy my.cnf to percona-node3
+  sudo: yes
+  copy:
+    src: "../templates/percona3.my.cnf.j2"
+    dest: "/etc/mysql/my.cnf"
+  when: inventory_hostname == "percona-node3"
+
 - name: configure mysqld
+  sudo: yes
   ini_file:
     dest: /etc/mysql/my.cnf
     section: mysqld
